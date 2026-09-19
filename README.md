@@ -23,7 +23,33 @@ extensions/
     route-audit.ts     # appends decisions to ~/.omp/agent/route-audit.jsonl
     route-test.ts      # offline unit tests (fake fetch, no network)
     route-live-dryrun.ts  # optional: one real Jev call, zero subagents spawned
+  model-selector/
+    perf.ts            # generic: read measured tok/s + ttft from your own sessions
+    quota.ts           # generic: normalized quota / rate-limit evidence shape
+    catalog.example.ts # TEMPLATE — copy and fill with your own providers/models
 ```
+
+## Why model-selector is not out-of-the-box
+
+The generic math — how to turn your own session history into a tok/s and TTFT
+number, how to express a 7-day or 5-hour window limit as remainingPercent — is
+public here. What is deliberately **not** public is *which* models you call and
+*which* subscriptions you pay for. Those are personal.
+
+So setup is required:
+
+1. Copy `catalog.example.ts` to `model-catalog.local.ts` (gitignored) and list
+   your concrete `provider/model` + thinking combos. Each row's `key` must
+   match how OMP records it in `model_perf` (`provider/model`).
+2. Write a tiny quota adapter that reads your own subscription usage (your
+   provider's usage API, a CLI, or a file you refresh) and returns the shape
+   from `quota.ts` (`usedPercent`, `resetsAt`, or shared-pool
+   `concurrencyLimit` / `windowUsedPercent` / `modelLoad`).
+3. Set `TYPESAFE_API_KEY`.
+
+The selector then builds one Jev choice question per task: candidates are your
+rows, enriched with measured throughput from `perf.ts`, quota from your
+adapter, and (optional) a benchmark IQ number you supply. Jev picks one.
 
 ## Requirements
 
