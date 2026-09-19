@@ -78,7 +78,7 @@ export function buildRouteQuestions(
         scout: "Read-only research and exploratory codebase analysis",
         fast: "Routine implementation or mechanical refactoring",
         smart: "Complex reasoning, cross-module architecture, or root-cause diagnosis",
-        "task-opus": "Adversarial architecture arbitration or strict review",
+        reviewer: "Adversarial architecture arbitration or strict review",
       },
     };
 

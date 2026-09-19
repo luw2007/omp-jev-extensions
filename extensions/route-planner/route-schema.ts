@@ -1,23 +1,11 @@
+// Example agent catalog. These are role names, not provider/model strings.
+// Replace with the agent classes you actually registered in your OMP config.
 export const KNOWN_AGENTS = [
   "fast",
   "smart",
   "scout",
   "reviewer",
-  "security-reviewer",
-  "task-opus",
-  "task-opus-impl",
-  "task-deepseek",
-  "task-google",
-  "task-codex",
-  "task-claude",
-  "task-trae",
-  "task-trae-sol",
-  "task-openrouter-1",
-  "task-openrouter-1o",
-  "sonic",
-  "adr-acceptance",
-  "adr-interrogator",
-  "adr-plan-reviewer",
+  "deep-worker",
 ] as const;
 export type KnownAgent = typeof KNOWN_AGENTS[number];
 
