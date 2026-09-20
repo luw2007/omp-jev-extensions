@@ -4,17 +4,20 @@
 //
 // Each entry is one concrete model+thinking combo you can actually call.
 // `key` must match how OMP records it in model_perf, i.e. `${provider}/${model}`.
-// `quotaKey` groups entries that share a subscription / shared pool, so the
-// selector can attach the right quota evidence to each.
+// `quotaKey` groups entries that share a subscription / shared pool, so your
+// quota adapter can attach the right usage evidence to each.
 
 export interface CatalogEntry {
+  id: string; // stable id used as the Jev choice key
   key: string; // provider/model, must match model_perf.model_key
-  agentClass: "fast" | "smart" | "review"; // which role this model plays
+  role: "smol" | "fast" | "task" | "smart" | "advisor" | "plan";
   provider: string;
   model: string;
-  thinking: string;
-  quotaKey: string; // your own label, e.g. "my-claude-sub", "my-openai-sub", "team-pool"
-  // Optional benchmark lookup (leave undefined if you don't use one):
+  thinking: string; // off | low | medium | high | xhigh | max
+  billing: "subscription" | "shared_pool";
+  quotaKey: string; // your own label, e.g. "my-claude-sub", "team-pool"
+  // Map to the PUBLIC benchmark model + effort for IQ. Leave undefined if
+  // you do not use a benchmark or there is no same-effort data point.
   benchmarkModel?: string;
   benchmarkEffort?: string;
 }
@@ -22,12 +25,16 @@ export interface CatalogEntry {
 const catalog: CatalogEntry[] = [
   // Example row — replace with your own:
   // {
+  //   id: "my-fast",
   //   key: "myprovider/my-fast-model",
-  //   agentClass: "fast",
+  //   role: "fast",
   //   provider: "myprovider",
   //   model: "my-fast-model",
-  //   thinking: "medium",
+  //   thinking: "high",
+  //   billing: "subscription",
   //   quotaKey: "my-sub",
+  //   benchmarkModel: "my-fast-model",
+  //   benchmarkEffort: "high",
   // },
 ];
 
