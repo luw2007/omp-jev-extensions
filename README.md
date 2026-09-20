@@ -60,14 +60,26 @@ adapter, and (optional) a benchmark IQ number you supply. Jev picks one.
 
 ## Install
 
-Copy the files into your OMP extensions directory and restart OMP:
+Keep the repository intact outside OMP's extension discovery directory. Symlink
+**only extension entry points** into `~/.omp/agent/extensions/`:
 
 ```bash
-mkdir -p ~/.omp/agent/extensions/acceptance-gate ~/.omp/agent/extensions/route-planner
-cp extensions/acceptance-gate/*.ts  ~/.omp/agent/extensions/acceptance-gate/
-cp extensions/route-planner/*.ts    ~/.omp/agent/extensions/route-planner/
+git clone https://github.com/luw2007/omp-jev-extensions.git ~/omp-extensions/omp-jev-extensions
+mkdir -p ~/.omp/agent/extensions
+ln -s ~/omp-extensions/omp-jev-extensions/extensions/route-planner/route-agent.ts \
+  ~/.omp/agent/extensions/route-agent.ts
+ln -s ~/omp-extensions/omp-jev-extensions/extensions/acceptance-gate/stop-jev.ts \
+  ~/.omp/agent/extensions/stop-jev.ts
 export TYPESAFE_API_KEY=...
 ```
+
+Do **not** copy `route-schema.ts`, `route-jev.ts`, `route-audit.ts`, tests, or dry
+runs into `~/.omp/agent/extensions/`. OMP treats every top-level `.ts` file in
+that directory as an extension entry and warns when a helper module does not
+export a factory function. Those files must remain next to the entry point in
+the cloned repository so relative imports work.
+
+Restart OMP after installing or updating the symlinks.
 
 Then add a line to your project `AGENTS.md` so the agent actually uses the gate:
 
