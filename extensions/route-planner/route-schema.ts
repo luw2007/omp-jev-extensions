@@ -49,6 +49,9 @@ export interface RoutePlan {
   mode: RouteMode;
   rationale: string;
   slices: RouteSlice[];
+  // Light = single boolean acceptance gate (jev_acceptance_gate).
+  // Heavy = 10-dimension foreman assessment (foreman_assess).
+  recommendedGate?: "light" | "heavy";
 }
 
 export function validateRoutePlanInvariants(plan: RoutePlan): void {
@@ -143,3 +146,7 @@ export function validateRoutePlanInvariants(plan: RoutePlan): void {
     }
   }
 }
+
+// OMP scans every .ts in the extensions tree; this module is imported by
+// route-agent.ts and does not register tools itself. No-op factory.
+export default function () {}

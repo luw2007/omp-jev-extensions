@@ -174,8 +174,13 @@ export async function askJevRoutePlan(
     mode,
     rationale: `Jev selected topology: ${mode}`,
     slices,
+    recommendedGate: mode === "parallel" || mode === "dag" ? "heavy" : "light",
   };
 
   validateRoutePlanInvariants(plan);
   return plan;
 }
+
+// OMP scans every .ts in the extensions tree; this module is imported by
+// route-agent.ts and does not register tools itself. No-op factory.
+export default function () {}

@@ -140,9 +140,9 @@ export default function stopJevExtension(pi: ExtensionAPI) {
 
   pi.registerTool({
     name: "jev_acceptance_gate",
-    label: "Jev Acceptance Gate",
+    label: "Jev Acceptance Gate (light)",
     description:
-      "Before reporting a task done, call this tool. It sends the acceptance criteria and your work summary to Jev. If Jev says not done, continue working; do not summarize to the user until it returns accepted=true.",
+      "Lightweight single-boolean acceptance check. Use for short/single-file tasks, small refactors, or when the route plan says recommendedGate=light. Before reporting done, send acceptance criteria + work summary; Jev returns accepted=true/false. Do NOT use for long multi-step tasks—use foreman_assess instead.",
     parameters: z.object({
       target: z.string().describe("The original task target or goal"),
       acceptance: z.string().describe("The concrete acceptance criteria you were asked to meet"),

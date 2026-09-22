@@ -6,6 +6,9 @@ Extensions for [Oh My Pi](https://github.com/oh-my-pi) (`@oh-my-pi/pi-coding-age
 - **acceptance-gate** — a `jev_acceptance_gate` tool the agent calls before declaring a task done.
   It sends the acceptance criteria and the agent's evidence summary to Jev; Jev decides whether
   the work actually meets the bar. If not, the tool tells the agent to keep going.
+- **foreman** — a `foreman_assess` tool for long multi-step / parallel / dag tasks. Jev returns
+  ten noul scores (completion, tests, requirements, stuck, off-track, AGENTS.md drift, needs-human,
+  …); deterministic thresholds map them to CONTINUE / STEER / VERIFY / FINISH / ESCALATE.
 - **route-planner** — a `jev_route` tool that picks subagent topology (direct / single / parallel /
   dag), assigns each slice to an agent class, and picks a model tier (`fast` / `smart` / `slow` /
   `task`) per slice.
@@ -19,6 +22,8 @@ Extensions for [Oh My Pi](https://github.com/oh-my-pi) (`@oh-my-pi/pi-coding-age
 extensions/
   acceptance-gate/
     stop-jev.ts             # registers jev_acceptance_gate, fails open if Jev is unavailable
+  foreman/
+    foreman.ts              # heavy 10-dimension foreman_assess gate (noul scores + action)
   route-planner/
     route-schema.ts         # RouteSlice / RoutePlan types + invariant validation
     route-jev.ts            # builds the Jev request, parses answers, validates choices
