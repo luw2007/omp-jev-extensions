@@ -10,14 +10,14 @@
 export interface CatalogEntry {
   id: string; // stable id used as the Jev choice key
   key: string; // provider/model, must match model_perf.model_key
-  role: "smol" | "fast" | "task" | "smart" | "advisor" | "plan";
+  role: "judge" | "smol" | "fast" | "task" | "smart" | "advisor" | "plan";
   provider: string;
   model: string;
   thinking: string; // off | low | medium | high | xhigh | max
   billing: "subscription" | "shared_pool";
   quotaKey: string; // your own label, e.g. "my-claude-sub", "team-pool"
-  // Map to the PUBLIC benchmark model + effort for IQ. Leave undefined if
-  // you do not use a benchmark or there is no same-effort data point.
+  // Map to the public benchmark model + matching effort for IQ. Without a
+  // trusted same-effort point (at least 20 samples), this row is ineligible.
   benchmarkModel?: string;
   benchmarkEffort?: string;
 }

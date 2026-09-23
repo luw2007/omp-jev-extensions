@@ -29,9 +29,8 @@ export function trustIq(
   return point.iq;
 }
 
-// Minimum acceptable quality. Candidates below this are eliminated even when
-// they are the fastest option. Tune per role; exported so callers can set it.
-export const DEFAULT_IQ_FLOOR = 50;
+// Minimum acceptable quality for any model selected by this policy.
+export const DEFAULT_IQ_FLOOR = 80;
 
 export interface BenchmarkSourceConfig {
   // Full URL, including the benchmark query parameter.
