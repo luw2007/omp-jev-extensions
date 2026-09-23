@@ -1,0 +1,24 @@
+{
+  "mode": "tasks",
+  "candidates": [
+    {
+      "id": "fast-default",
+      "provider": "replace-provider",
+      "model": "replace-fast-model",
+      "thinking": "high",
+      "agent": "replace-fast-agent",
+      "description": "Fast model for routine coding, repository inspection, and small changes."
+    },
+    {
+      "id": "smart-default",
+      "provider": "replace-provider",
+      "model": "replace-smart-model",
+      "thinking": "xhigh",
+      "agent": "replace-smart-agent",
+      "description": "Strong model for architecture, debugging, planning, review, and risky changes."
+    }
+  ],
+  "timeoutMs": 5000,
+  "jevUrl": "https://api.typesafe.ai/v1/systemone",
+  "jevModel": "jev-latest"
+}

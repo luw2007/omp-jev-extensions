@@ -98,6 +98,36 @@ Permissions resolve through a fixed priority chain: session `always` pre-auth �
 `deny` glob → `allow` glob → `--yes` → Jev dynamic decision → `permissions.default`.
 In non-interactive mode an `ask` is auto-denied (exit 3).
 
+### OMP all-model router
+
+`extensions/all-model-router/all-model-router.ts` supports three modes:
+
+- `/route tasks` routes only `task` / `functions.task` items (default).
+- `/route auto` routes the main agent once and routes task items.
+- `/route off` disables both paths.
+- `/route status` prints the effective mode and model-lock source.
+
+A user model selection (`set` or `cycle`) locks the main model. Automatic session routing then
+skips it. `/route auto` explicitly clears that lock and opts back into main-session routing.
+Task items can set `routing: "fixed"` to preserve an explicit `agent`; other items remain routable.
+The selected provider/model + thinking level stays stable for the session's turns, retries,
+compaction, and summaries.
+
+Install the entry point and create a local candidate file:
+
+```bash
+ln -s ~/omp-extensions/omp-jev-extensions/extensions/all-model-router/all-model-router.ts \
+  ~/.omp/agent/extensions/all-model-router.ts
+cp extensions/all-model-router/config.example.json ~/.omp/agent/jev-model-router.json
+```
+
+Edit the local file with models present in OMP's model registry. Set each candidate's optional
+`agent` to an existing model-pinned task agent. Candidates without configured auth are removed
+before the Jev request. Missing configuration, missing auth, timeout, non-2xx, malformed answers,
+and failed model switches preserve OMP's current model. Set `JEV_MODEL_ROUTING=off` to preserve
+an explicit caller-selected model. Do not load this extension together with an older `task`-only
+router; two routers would make independent decisions for the same subagent.
+
 ## Architecture
 
 ```
