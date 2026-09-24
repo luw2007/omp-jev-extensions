@@ -1,186 +1,65 @@
-# jev CLI
+# omp-jev-extensions
 
-`jev` is a single-machine command-line coding agent. It runs a task against a local
-working directory by driving an LLM in a loop — call tools, read results, act again —
-and delegates small, well-scoped decisions (routing, model choice, acceptance gating,
-permission calls) to the [Typesafe](https://typesafe.ai) Jev decision API instead of
-spending the main model's context on them.
+OMP（Oh-My-Pi）extensions for the Typesafe Jev typed-decision API.
 
-The design is ported from [pi](https://github.com/badlogic/pi-mono) (the durable,
-entry-tree harness) and rebuilt as a standalone TypeScript/Bun program. It does not
-depend on pi at runtime.
+## 简介
 
-## Install
+这是一组 OMP coding agent 扩展，为 OMP 接入 Typesafe Jev 类型化决策 API，覆盖：
+路由、进度评估、验收门槛、模型选择、可见度与动态权限。
 
-Requires [Bun](https://bun.sh) >= 1.1.
+每个扩展是一个可被 OMP 加载的 TypeScript 入口文件，导出一个接收 `ExtensionAPI` 的默认函数。
 
-```bash
-git clone https://github.com/luw2007/omp-jev-extensions.git
-cd omp-jev-extensions
-bun install
-bun link        # exposes the `jev` shim, or use `bun src/cli/index.ts ...` directly
-```
+## 扩展清单
 
-Set a model provider key and (optionally) a Jev key:
+| 扩展 | 入口 | 作用 |
+|------|------|------|
+| acceptance-gate | `extensions/acceptance-gate/stop-jev.ts` | 验收门槛：任务结束前由 Jev 评估是否真正完成 |
+| foreman | `extensions/foreman/foreman.ts` | 进度评估：heavy gate 模式下自动注入进度检查指令 |
+| route-planner | `extensions/route-planner/route-agent.ts` | 子任务路由规划：由 Jev 选择 tier |
+| model-selector | `extensions/model-selector/select.ts` | 模型选择策略库：IQ 信任门限、配额、速度排名（纯逻辑库，无独立扩展入口） |
+| all-model-router | `extensions/all-model-router/all-model-router.ts` | 全自动路由 + 手动模型控制（`/route` 命令） |
 
-```bash
-export OPENAI_API_KEY=...
-export TYPESAFE_API_KEY=...   # optional; without it all Jev points fail open
-```
+## 安装
 
-## Quick start
+将各扩展入口 symlink 到 OMP 扩展目录：
 
 ```bash
-# One-shot task, non-interactive.
-jev run "create hello.ts that prints Hello World, then run it"
-
-# Interactive REPL: multi-turn chat, /exit to leave, /compact to compact.
-jev chat
-
-# List past sessions and resume one.
-jev sessions
-jev resume <session-id> "now also add a goodbye function"
+mkdir -p ~/.omp/agent/extensions
+ln -s "$(pwd)/extensions/acceptance-gate/stop-jev.ts"          ~/.omp/agent/extensions/acceptance-gate.ts
+ln -s "$(pwd)/extensions/foreman/foreman.ts"                   ~/.omp/agent/extensions/foreman.ts
+ln -s "$(pwd)/extensions/route-planner/route-agent.ts"         ~/.omp/agent/extensions/route-planner.ts
+ln -s "$(pwd)/extensions/all-model-router/all-model-router.ts" ~/.omp/agent/extensions/all-model-router.ts
 ```
 
-With no `TYPESAFE_API_KEY`, the agent still works: routing falls back to
-single / coder / balanced, the acceptance gate passes, and the default model is used.
+`model-selector` 是被其他扩展引用的策略库，不需要单独安装。
 
-## CLI commands
+## 配置
 
-| Command | Purpose |
-| --- | --- |
-| `jev run <prompt>` | Non-interactive one-shot task; exits when settled. |
-| `jev chat` | Interactive loop (supports `/exit`, `/compact`, `/model`, `/permissions`, `/steer`). |
-| `jev resume <id> [prompt]` | Reopen a persisted session; with a prompt runs one task, otherwise enters chat. |
-| `jev sessions` | List sessions. |
-| `jev session delete <id>` | Delete a session. |
-| `jev tools` | List the builtin + Jev tools the agent can call. |
-| `jev compact <id>` | Manually compact a session (independent compaction operation). |
-| `jev audit [--type route\|stop\|foreman]` | Print the Jev decision audit log. |
-| `jev bench` | Run a controlled end-to-end model benchmark. |
+- **all-model-router**：本地配置 `~/.omp/agent/jev-model-router.json`，字段见
+  `extensions/all-model-router/config.example.json`（含 candidates、mode、jevUrl、jevModel 等）。
+- **model-selector**：模型目录示例见 `extensions/model-selector/catalog.example.ts`。
 
-Common flags:
+## 迁移说明
 
-```
---model <provider/model>   override the default model
---thinking <level>         off | minimal | low | medium | high
---session <id>              use/create a specific session id
---cwd <path>                working directory (default: $PWD)
---config <path>             config file (default: ~/.jev/config.json)
---json                      NDJSON event stream on stdout (machine-readable)
---no-jev                    disable every Jev decision point (pure agent mode)
--y, --yes                   approve every permission prompt
---gate <light|heavy|off>    acceptance-gate mode
-```
+独立客户端 `jev` CLI（含动态上下文管理）已迁出本仓库，位于
+[`../ev-harness`](../ev-harness)。本仓库只保留 OMP extensions。详见
+[MIGRATION.md](MIGRATION.md)。
 
-Exit codes from `jev run`: `0` completed, `1` general error, `2` model/tool error,
-`3` permission denied.
+## 开发
 
-## Configuration
+扩展测试文件：
 
-`~/.jev/config.json` (see [`docs/config-example.json`](docs/config-example.json)):
+- `extensions/all-model-router/all-model-router-test.ts`
+- `extensions/route-planner/route-test.ts`
+- `extensions/model-selector/model-selector-test.ts`
+- `extensions/model-selector/task-routing-audit-test.ts`
 
-```json
-{
-  "defaultModel": { "provider": "openai", "modelId": "gpt-4o" },
-  "thinkingLevel": "medium",
-  "permissions": { "default": "ask", "allow": ["echo*"], "deny": ["rm -rf *"] },
-  "compaction": { "enabled": true, "reserveTokens": 16384, "keepRecentTokens": 20000 },
-  "gate": "light",
-  "typesafeApiKey": "env:TYPESAFE_API_KEY"
-}
-```
-
-Resolution order (later wins): built-in defaults → config file → environment
-(`JEV_MODEL`, `TYPESAFE_API_KEY`, `OPENAI_API_KEY`) → CLI flags.
-
-Permissions resolve through a fixed priority chain: session `always` pre-auth →
-`deny` glob → `allow` glob → `--yes` → Jev dynamic decision → `permissions.default`.
-In non-interactive mode an `ask` is auto-denied (exit 3).
-
-### OMP all-model router
-
-`extensions/all-model-router/all-model-router.ts` supports three modes:
-
-- `/route tasks` routes only `task` / `functions.task` items (default).
-- `/route auto` routes the main agent once and routes task items.
-- `/route off` disables both paths.
-- `/route status` prints the effective mode and model-lock source.
-
-A user model selection (`set` or `cycle`) locks the main model. Automatic session routing then
-skips it. `/route auto` explicitly clears that lock and opts back into main-session routing.
-Task items can set `routing: "fixed"` to preserve an explicit `agent`; other items remain routable.
-The selected provider/model + thinking level stays stable for the session's turns, retries,
-compaction, and summaries.
-
-Install the entry point and create a local candidate file:
+运行测试（需先安装 `@oh-my-pi/pi-coding-agent` 依赖）：
 
 ```bash
-ln -s ~/omp-extensions/omp-jev-extensions/extensions/all-model-router/all-model-router.ts \
-  ~/.omp/agent/extensions/all-model-router.ts
-cp extensions/all-model-router/config.example.json ~/.omp/agent/jev-model-router.json
+bun test extensions/
 ```
-
-Edit the local file with models present in OMP's model registry. Set each candidate's optional
-`agent` to an existing model-pinned task agent. Candidates without configured auth are removed
-before the Jev request. Missing configuration, missing auth, timeout, non-2xx, malformed answers,
-and failed model switches preserve OMP's current model. Set `JEV_MODEL_ROUTING=off` to preserve
-an explicit caller-selected model. Do not load this extension together with an older `task`-only
-router; two routers would make independent decisions for the same subagent.
-
-## Architecture
-
-```
-CLI layer        src/cli/        argv parsing, run/chat/resume/sessions/tools/compact/audit
-Wiring           src/cli/wiring.ts  assembles harness + session + tools + hooks + telemetry
-Harness          src/harness/    AgentHarness -> Lane -> Drive, hooks, events, system prompt
-Runtime          src/runtime/    10-state drive loop, retry, compaction, effect gate, reconcile
-Session          src/session/    immutable entry tree, values, JSONL persistence, mutation line
-Jev decisions    src/jev/        client, route, foreman, acceptance gate, model selector, visibility
-Permissions      src/permissions/ static globs + dynamic Jev provider + priority chain
-Tools            src/tools/      bash, read, write, edit, file-mutation queue
-Models           src/models/      provider registry, FakeProvider, OpenAI-compatible adapter
-Telemetry/sec    src/telemetry/, src/security/   local exporter, audit log, data minimization
-```
-
-A run is a drive loop over a durable 10-state state machine
-(`starting → checkpoint → assistant.ready → assistant.effect_pending → tools → …`).
-Every external side effect commits an intent first (effect-pending), then a
-settlement, so a crash can be recovered from the JSONL transcript. Context grows
-until a token threshold triggers compaction (a six-section summary + retained tail);
-the projection always shows the newest summary plus the tail.
-
-Jev points are **fail-open**: a missing key, timeout, non-2xx, or malformed answer
-lets the agent proceed and logs the decision with `confidence: 0`. Permission calls
-are the exception — they fail closed.
-
-## Relationship to pi
-
-`jev` borrows pi's core mental model and rebuilds it:
-
-- **Borrowed ideas**: immutable entry tree + parallel value/list stores, the
-  intent→effect→settle sandwich, a single serial session mutation line, explicit
-  trailing `Context` (no AsyncLocalStorage), immutable result records, and the
-  overflow/threshold compaction shape.
-- **Rebuilt**: the CLI surface, the Jev decision layer (route / foreman / gate /
-  visibility / dynamic permissions), the model-selection policy, the permission
-  priority chain, NDJSON event output, and the telemetry/security modules.
-
-`jev` is a standalone Bun program; it does not import from pi.
-
-## Development
-
-```bash
-bun run build     # tsc --noEmit
-bun test          # all unit + e2e tests (FakeProvider, no network)
-bun test test/e2e/  # just the S1-S12 acceptance scenarios
-bunx biome check src/ test/   # lint
-./scripts/verify.sh           # build + lint + test + e2e + smoke, one shot
-```
-
-All tests run against an in-memory `FakeProvider` inside a temp directory; no real
-API calls or keys are needed.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT

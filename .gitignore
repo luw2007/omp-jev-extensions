@@ -2,8 +2,11 @@ node_modules/
 *.js
 *.d.ts
 *.map
+*.tsbuildinfo
 .DS_Store
 .env
 .env.*
 *.log
-model-catalog.local.ts
+
+# all-model-router local config (never commit real provider keys)
+jev-model-router.json
