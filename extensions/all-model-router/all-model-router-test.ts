@@ -1,9 +1,14 @@
+import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
 import assert from "node:assert/strict";
 import {
   applyModelSelection,
   chooseCandidate,
+  createRouterExtension,
   enabledCandidates,
   isChildSession,
+  isRestoredSession,
+  modelKey,
+  observeModelSelection,
   parseRouteMode,
   resolveInitialMode,
   routeSession,
@@ -36,6 +41,19 @@ async function run() {
   assert.equal(isChildSession(undefined), false);
   assert.equal(isChildSession({}), false);
   assert.equal(isChildSession({ parentSession: "/tmp/parent.jsonl" }), true);
+  assert.equal(isRestoredSession([{ type: "model_change" }]), false);
+  assert.equal(isRestoredSession([{ type: "message" }]), true);
+  assert.equal(modelKey({ provider: "p", id: "m" }), "p/m");
+  const observedState: RouterState = { mode: "auto", modelLocked: false, modelSource: "default" };
+  let observed = observeModelSelection(observedState, undefined, "p/a");
+  assert.equal(observedState.modelLocked, false);
+  observed = observeModelSelection(observedState, observed, "p/b");
+  assert.equal(observedState.modelLocked, true);
+  assert.equal(observedState.modelSource, "user");
+  observedState.modelLocked = false;
+  observedState.modelSource = "jev";
+  observeModelSelection(observedState, observed, "p/c", true);
+  assert.equal(observedState.modelLocked, false);
 
   assert.equal(resolveInitialMode("auto", "off"), "auto");
   assert.equal(resolveInitialMode("invalid", "off"), "off");
@@ -161,6 +179,101 @@ async function run() {
     json: async () => ({ answers: { selection: { choice: "missing", confidence: 1, probabilities: { fast: 0.5, smart: 0.5 } } } }),
   })) as unknown as typeof fetch;
   assert.equal(await chooseCandidate("x", config.candidates, "key", config, invalidFetch), undefined);
+
+  const handlers = new Map<string, (event: unknown, ctx: unknown) => unknown>();
+  let routeCommand: { handler: (args: string, ctx: { ui: { notify(message: string): void } }) => Promise<void> } | undefined;
+  let setModelCalls = 0;
+  let currentMainModel = { provider: "p", id: "initial" };
+  const handlerApi = {
+    on: (name: string, handler: (event: unknown, ctx: unknown) => unknown) => { handlers.set(name, handler); return () => {}; },
+    registerCommand: (name: string, command: typeof routeCommand) => { if (name === "route") routeCommand = command; },
+    setModel: async (model: unknown) => {
+      setModelCalls += 1;
+      currentMainModel = model as { provider: string; id: string };
+      return true;
+    },
+    setThinkingLevel: () => {},
+  } as unknown as ExtensionAPI;
+  let handlerFetchCalls = 0;
+  const handlerFetch = (async () => {
+    handlerFetchCalls += 1;
+    return {
+      ok: true,
+      json: async () => ({ answers: { selection: { choice: "smart", confidence: 0.9, probabilities: { fast: 0.1, smart: 0.9 } } } }),
+    };
+  }) as unknown as typeof fetch;
+  createRouterExtension({
+    env: { TYPESAFE_API_KEY: "key", JEV_MODEL_ROUTING: "auto" },
+    loadConfig: async () => config,
+    fetchImpl: handlerFetch,
+  })(handlerApi);
+  const mainContext = {
+    sessionManager: { getHeader: () => ({ type: "session", id: "main" }), getEntries: () => [] },
+    modelRegistry: { find: (provider: string, model: string) => modelById.get(`${provider}/${model}`), hasConfiguredAuth: () => true },
+    get model() { return currentMainModel; },
+    getSystemPrompt: () => "rebuilt prompt",
+  };
+  await handlers.get("session_start")!({}, mainContext);
+  const beforeStart = handlers.get("before_agent_start")!;
+  assert.deepEqual(await beforeStart({ prompt: "main task" }, mainContext), { systemPrompt: "rebuilt prompt" });
+  assert.equal(setModelCalls, 1);
+  assert.equal(handlerFetchCalls, 1);
+  await beforeStart({ prompt: "second turn" }, mainContext);
+  assert.equal(setModelCalls, 1, "auto routing selects the main model once");
+
+  const childHandlers = new Map<string, (event: unknown, ctx: unknown) => unknown>();
+  let childSetModelCalls = 0;
+  createRouterExtension({
+    env: { TYPESAFE_API_KEY: "key", JEV_MODEL_ROUTING: "auto" },
+    loadConfig: async () => config,
+    fetchImpl: handlerFetch,
+  })({
+    on: (name: string, handler: (event: unknown, ctx: unknown) => unknown) => { childHandlers.set(name, handler); return () => {}; },
+    registerCommand: () => {},
+    setModel: async () => { childSetModelCalls += 1; return true; },
+    setThinkingLevel: () => {},
+  } as unknown as ExtensionAPI);
+  await childHandlers.get("before_agent_start")!({ prompt: "child task" }, {
+    ...mainContext,
+    sessionManager: { getHeader: () => ({ type: "session", id: "child", parentSession: "/tmp/main.jsonl" }) },
+  });
+  assert.equal(childSetModelCalls, 0, "subagents keep the model selected by task routing");
+
+  const restoredHandlers = new Map<string, (event: unknown, ctx: unknown) => unknown>();
+  let restoredSetModelCalls = 0;
+  createRouterExtension({
+    env: { TYPESAFE_API_KEY: "key", JEV_MODEL_ROUTING: "auto" },
+    loadConfig: async () => config,
+    fetchImpl: handlerFetch,
+  })({
+    on: (name: string, handler: (event: unknown, ctx: unknown) => unknown) => { restoredHandlers.set(name, handler); return () => {}; },
+    registerCommand: () => {},
+    setModel: async () => { restoredSetModelCalls += 1; return true; },
+    setThinkingLevel: () => {},
+  } as unknown as ExtensionAPI);
+  const restoredContext = {
+    ...mainContext,
+    sessionManager: { getHeader: () => ({ type: "session", id: "restored" }), getEntries: () => [{ type: "message" }] },
+  };
+  await restoredHandlers.get("session_start")!({}, restoredContext);
+  await restoredHandlers.get("before_agent_start")!({ prompt: "resume" }, restoredContext);
+  assert.equal(restoredSetModelCalls, 0, "restored sessions keep their restored main model");
+  await routeCommand!.handler("auto", { ui: { notify: () => {} } });
+  currentMainModel = { provider: "p", id: "manual" };
+  await handlers.get("session_switch")!({ reason: "resume" }, mainContext);
+  await beforeStart({ prompt: "resumed in process" }, mainContext);
+  assert.equal(setModelCalls, 1, "session_switch resume restores the manual lock even when the model key matches");
+
+  const notices: string[] = [];
+  assert.ok(routeCommand);
+  await routeCommand!.handler("auto", { ui: { notify: (message) => notices.push(message) } });
+  assert.match(notices.at(-1)!, /route=auto/);
+  currentMainModel = { provider: "p", id: "manual-2" };
+  await beforeStart({ prompt: "manual lock" }, mainContext);
+  assert.equal(setModelCalls, 1, "a changed model snapshot locks automatic main routing without model_select support");
+  await routeCommand!.handler("auto", { ui: { notify: (message) => notices.push(message) } });
+  await beforeStart({ prompt: "auto again" }, mainContext);
+  assert.equal(setModelCalls, 2, "/route auto clears the manual lock");
 
   console.log("All all-model-router checks passed.");
 }

@@ -72,6 +72,27 @@ export function isChildSession(header: { parentSession?: string } | null | undef
   return typeof header?.parentSession === "string" && header.parentSession.length > 0;
 }
 
+export function isRestoredSession(entries: ReadonlyArray<{ type?: string }>): boolean {
+  return entries.some((entry) => entry.type === "message" || entry.type === "compaction" || entry.type === "branch_summary");
+}
+
+export function modelKey(model: { provider?: string; id?: string } | undefined): string | undefined {
+  if (!model?.provider || !model.id) return undefined;
+  return `${model.provider}/${model.id}`;
+}
+
+export function observeModelSelection(
+  state: RouterState,
+  previousKey: string | undefined,
+  currentKey: string | undefined,
+  internalChange = false,
+): string | undefined {
+  if (previousKey !== undefined && currentKey !== undefined && previousKey !== currentKey) {
+    applyModelSelection(state, "set", internalChange);
+  }
+  return currentKey ?? previousKey;
+}
+
 export function routeStatus(state: RouterState): string {
   const main = state.mode !== "auto" ? "off" : state.modelLocked ? "locked" : "auto";
   return `route=${state.mode} main=${main} tasks=${shouldRouteTasks(state) ? "auto" : "off"} modelLock=${state.modelLocked ? "on" : "off"} modelSource=${state.modelSource}`;
@@ -255,6 +276,7 @@ export function createRouterExtension(runtime: RouterRuntimeOptions = {}) {
   const fetchImpl = runtime.fetchImpl ?? fetch;
   let routed = false;
   let internalModelChange = false;
+  let observedModelKey: string | undefined;
   let modeManuallySet = false;
   let configModeApplied = false;
   let configValue: RouterConfig | undefined;
@@ -301,12 +323,36 @@ export function createRouterExtension(runtime: RouterRuntimeOptions = {}) {
     },
   });
 
+  pi.on("session_start", (_event, ctx: ExtensionContext) => {
+    observedModelKey = modelKey(ctx.model as { provider?: string; id?: string } | undefined);
+    const header = ctx.sessionManager.getHeader();
+    if (!isChildSession(header) && isRestoredSession(ctx.sessionManager.getEntries())) {
+      state.modelLocked = true;
+      state.modelSource = "restored";
+    }
+  });
+
+  pi.on("session_switch", (event, ctx: ExtensionContext) => {
+    observedModelKey = modelKey(ctx.model as { provider?: string; id?: string } | undefined);
+    routed = false;
+    if (event.reason === "resume") {
+      state.modelLocked = true;
+      state.modelSource = "restored";
+    }
+  });
+
   (pi as unknown as ModelSelectCompatibleApi).on("model_select", (event) => {
     applyModelSelection(state, event.source, internalModelChange);
   });
 
   pi.on("before_agent_start", async (event, ctx: ExtensionContext) => {
     if (isChildSession(ctx.sessionManager.getHeader())) return;
+    observedModelKey = observeModelSelection(
+      state,
+      observedModelKey,
+      modelKey(ctx.model as { provider?: string; id?: string } | undefined),
+      internalModelChange,
+    );
     const config = await getConfig();
     if (!config) return;
     applyConfigMode(config);
@@ -322,6 +368,7 @@ export function createRouterExtension(runtime: RouterRuntimeOptions = {}) {
       if (changed) {
         routed = true;
         state.modelSource = "jev";
+        observedModelKey = modelKey(ctx.model as { provider?: string; id?: string } | undefined);
         return { systemPrompt: ctx.getSystemPrompt() };
       }
     } catch {
@@ -350,4 +397,7 @@ export function createRouterExtension(runtime: RouterRuntimeOptions = {}) {
       // Fail open: preserve the task's requested agent.
     });
   });
+  };
 }
+
+export default createRouterExtension();
