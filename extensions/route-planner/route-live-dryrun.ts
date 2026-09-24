@@ -28,7 +28,9 @@ async function runLiveDryRun() {
   }
 }
 
-runLiveDryRun();
+if (import.meta.main) {
+  runLiveDryRun();
+}
 
 // OMP scans every .ts in the extensions tree; this module is imported by
 // route-agent.ts and does not register tools itself. No-op factory.

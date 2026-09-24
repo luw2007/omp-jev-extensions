@@ -1,0 +1,17 @@
+{
+  "name": "omp-jev-extensions",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OMP extensions for Typesafe Jev typed-decision API",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "bun": ">=1.1"
+  },
+  "scripts": {
+    "test": "for f in extensions/*/*-test.ts; do bun run \"$f\" || exit 1; done"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.0"
+  }
+}

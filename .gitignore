@@ -10,3 +10,13 @@ node_modules/
 
 # all-model-router local config (never commit real provider keys)
 jev-model-router.json
+
+# local model catalog (see extensions/model-selector/catalog.example.ts)
+*.local.ts
+
+# internal flow diagrams (local-only, never commit)
+omp-*-flow.html
+
+# internal IQ sync scripts (local-only, contain internal model codenames)
+extensions/model-selector/iq-source.ts
+extensions/model-selector/iq-sync.ts

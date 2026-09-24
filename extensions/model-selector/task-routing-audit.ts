@@ -24,8 +24,8 @@
 //   actualModel...  — read from the SPAWNED subagent's OWN transcript file
 //                      (`<sessionDir>/<sessionStem>/<AgentId>.jsonl` — keyed
 //                      by the AGENT id, not the job id; confirmed against
-//                      `pi-coding-agent/src/internal-urls/registry-helpers.ts`
-//                      and `task/executor.ts`'s `subtaskSessionFile` build),
+//                      the OMP internal URL registry and the task executor's
+//                      transcript path build),
 //                      specifically its `model_change` and
 //                      `thinking_level_change` events. This is the only
 //                      place the real post-mutation provider/model/thinking
@@ -94,7 +94,7 @@ export interface RequestedSlice {
 export interface SliceOutcome {
   readonly slice: RequestedSlice;
   // The AGENT id used to locate the subagent's own transcript file. Distinct
-  // from the async job id: `task/index.ts` mints both independently
+  // from the async job id: the OMP task module mints both independently
   // (`Spawned agent \`${agentId}\` (job \`${jobId}\`)`), and the transcript
   // is always keyed by agentId, never jobId. null = could not extract/pair
   // an agent id for this slice.
@@ -159,13 +159,13 @@ export function extractRequestedSlices(sessionFile: string): RequestedSlice[] {
 
 // Extracts every spawned `{agentId, jobId}` pair from the toolResult text for
 // a given toolCallId. Both the single-spawn and multi-spawn (bullet-list)
-// messages share the exact same grammar in `pi-coding-agent/src/task/index.ts`:
+// messages share the exact same grammar in the OMP task module:
 // `` `${agentId}` (job `${jobId}`) ``. Matching that whole grammar (not just
 // a bare backtick-quoted token) does double duty: it is what lets a
 // single regex parse both formats, and it rejects any unrelated
 // backtick-quoted bullet or mention elsewhere in the message text that
 // lacks the trailing `(job ...)` — those are never counted as a spawn.
-// `sanitizeAgentId` in `structured-subagent.ts` restricts real ids to
+// The OMP subagent id sanitizer restricts real ids to
 // `[A-Za-z0-9_-]`, so that is the charset matched here rather than a
 // permissive `[^`]+` that could straddle unrelated backticks.
 const SPAWN_ID_PATTERN = /`([A-Za-z0-9_-]+)` \(job `([A-Za-z0-9_-]+)`\)/gu;
@@ -187,8 +187,8 @@ export function extractSpawnedIds(sessionFile: string, toolCallId: string): Arra
 }
 
 // Transcripts are always keyed by AGENT id, never job id — confirmed against
-// `internal-urls/registry-helpers.ts` ("a subagent's transcript is
-// `<artifactsDir>/<AgentId>.jsonl`") and `task/executor.ts`'s
+// the OMP internal URL registry ("a subagent's transcript is
+// `<artifactsDir>/<AgentId>.jsonl`") and the task executor's
 // `subtaskSessionFile = path.join(artifactsDir, `${id}.jsonl`)`, where `id`
 // is the reserved agent id, not the async job id.
 function nestedTranscriptPath(sessionFile: string, agentId: string): string {

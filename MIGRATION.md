@@ -1,7 +1,7 @@
 # 迁移说明
 
 - **迁移日期**：2026-09-24
-- **迁移内容**：独立客户端 `jev` CLI（含动态上下文管理）从本仓库迁出到 `../ev-harness`。
+- **迁移内容**：独立客户端 `jev` CLI（含动态上下文管理）从本仓库迁出（另行发布）。
   本仓库此后只保留 OMP extensions。
 
 ## 迁出
@@ -11,8 +11,7 @@
 - `scripts/`
 - 客户端配置：`package.json`、`tsconfig.json`、`biome.json`、`vitest.config.ts`、`bun.lock`
 - 客户端文档：`docs/CLI-DEV-PLAN.md`、`INTERFACE-SPEC.md`、`IMPLEMENTATION-REPORT.md`、
-  `FINAL-ACCEPTANCE-REPORT.md`、`DYNAMIC-CONTEXT-DESIGN.md`、`config-example.json`、
-  `Jev-Engineering-for-Coding-Agents-markdown/`
+  `FINAL-ACCEPTANCE-REPORT.md`、`DYNAMIC-CONTEXT-DESIGN.md`、`config-example.json`
 
 ## 保留
 
@@ -29,9 +28,5 @@
 
 `extensions/all-model-router/all-model-router.ts` 导入 `@oh-my-pi/pi-coding-agent`，
 是 OMP 扩展，保留在本仓库。
-
-## 新仓库位置
-
-`../ev-harness`
 
 冗长的客户端实现报告不随迁保留。

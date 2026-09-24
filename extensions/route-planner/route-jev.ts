@@ -8,7 +8,7 @@ import {
   validateRoutePlanInvariants,
 } from "./route-schema.js";
 
-const JEV_URL = "https://api.typesafe.ai/v1/systemone";
+const JEV_URL = process.env.JEV_URL ?? "https://api.typesafe.ai/v1/systemone";
 const JEV_MODEL = "jev-latest";
 
 // Read the Typesafe API key from the environment.

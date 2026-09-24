@@ -1,7 +1,7 @@
 import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
 import { getTypesafeApiKey } from "../route-planner/route-jev.js";
 
-const JEV_URL = "https://api.typesafe.ai/v1/systemone";
+const JEV_URL = process.env.JEV_URL ?? "https://api.typesafe.ai/v1/systemone";
 const JEV_MODEL = "jev-latest";
 
 // Thresholds mirrored from thruwire/foreman policy.py.

@@ -39,10 +39,18 @@ ln -s "$(pwd)/extensions/all-model-router/all-model-router.ts" ~/.omp/agent/exte
   `extensions/all-model-router/config.example.json`（含 candidates、mode、jevUrl、jevModel 等）。
 - **model-selector**：模型目录示例见 `extensions/model-selector/catalog.example.ts`。
 
+## 隐私
+
+这些扩展会将任务内容（prompt、工作摘要、`git status`、验收标准）以明文 POST 到
+`https://api.typesafe.ai/v1/systemone`。
+
+- API key 通过环境变量 `TYPESAFE_API_KEY` 读取；缺失时 gate 自动放行（fail-open）。
+- Jev API URL 可通过环境变量 `JEV_URL` 覆盖（默认即上述地址）。
+- 本地审计日志写入 `~/.omp/agent/stop-audit.jsonl` 和 `~/.omp/agent/route-audit.jsonl`。
+
 ## 迁移说明
 
-独立客户端 `jev` CLI（含动态上下文管理）已迁出本仓库，位于
-[`../ev-harness`](../ev-harness)。本仓库只保留 OMP extensions。详见
+独立客户端 `jev` CLI（含动态上下文管理）已迁出本仓库（另行发布）。本仓库只保留 OMP extensions。详见
 [MIGRATION.md](MIGRATION.md)。
 
 ## 开发
@@ -54,10 +62,10 @@ ln -s "$(pwd)/extensions/all-model-router/all-model-router.ts" ~/.omp/agent/exte
 - `extensions/model-selector/model-selector-test.ts`
 - `extensions/model-selector/task-routing-audit-test.ts`
 
-运行测试（需先安装 `@oh-my-pi/pi-coding-agent` 依赖）：
+运行测试：
 
 ```bash
-bun test extensions/
+bun run test
 ```
 
 ## License
